@@ -22,3 +22,5 @@ go.work
 
 *.json
 *.csv
+output/*.csv
+output/*.json
