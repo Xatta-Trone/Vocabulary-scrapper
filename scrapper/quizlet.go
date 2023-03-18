@@ -44,6 +44,8 @@ func ScrapQuizlet(url string, options *model.Options) ([]model.Word, string, err
 				word.ID = currentId + 1
 			}
 
+			// fmt.Println(word)
+
 			words = append(words, word)
 			currentId++
 
@@ -83,6 +85,8 @@ func ScrapQuizlet(url string, options *model.Options) ([]model.Word, string, err
 
 	c.OnHTML("div.SetPage-titleWrapper", func(h *colly.HTMLElement) {
 		title := strings.TrimSpace(h.Text)
+		title = strings.ReplaceAll(title," ","-")
+		title = strings.ReplaceAll(title,":","")
 		if len(title) > 0 {
 			fileName = title
 		}
