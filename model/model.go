@@ -6,6 +6,7 @@ type Word struct {
 	ID         int    `json:"id,omitempty"`
 	Word       string `json:"word"`
 	Definition string `json:"definition,omitempty"`
+	Group    int    `json:"group,omitempty"`
 }
 
 type Options struct {
@@ -23,6 +24,6 @@ func (w Word) BuildCSV() []string {
 	if w.ID == 0 {
 		return []string{w.Word, w.Definition}
 	}
-	return []string{strconv.Itoa(w.ID), w.Word, w.Definition}
+	return []string{strconv.Itoa(w.ID), strconv.Itoa(w.Group), w.Word, w.Definition}
 
 }

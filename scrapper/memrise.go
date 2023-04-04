@@ -2,6 +2,7 @@ package scrapper
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/PuerkitoBio/goquery"
@@ -67,9 +68,20 @@ func ScrapMemrise(url string, options *model.Options) ([]model.Word, string, err
 	// scrap words
 
 	detailCollector.OnHTML(".things", func(h *colly.HTMLElement) {
+		// extract the group ID
+		groups := strings.Split(h.Request.URL.Path, "/")
+		group, err  := strconv.Atoi(groups[len(groups)-2])
+
+		if err != nil {
+			group = 1
+		}
+
+		fmt.Printf("Memrise group %d\n",group)
+
 		h.DOM.Find(".thing").Each(func(i int, s *goquery.Selection) {
 			word := model.Word{
 				Word: strings.TrimSpace(strings.ReplaceAll(s.Find(".col_a").Text(), "\n", " ")),
+				Group: group,
 			}
 
 			if !options.NO_DEFINITION {

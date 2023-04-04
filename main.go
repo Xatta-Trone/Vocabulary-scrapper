@@ -98,7 +98,8 @@ func selectScrapper(url string, options *model.Options) ([]model.Word, string, e
 
 	} else if strings.Contains(url, "quizlet.com") {
 
-		return scrapper.ScrapQuizlet(url, options)
+		return scrapper.DecideQuizletScrapper(url, options)
+		// return scrapper.ScrapQuizlet(url, options)
 
 	} else if strings.Contains(url, "memrise.com") {
 
@@ -111,6 +112,16 @@ func selectScrapper(url string, options *model.Options) ([]model.Word, string, e
 		return []model.Word{}, "default", errors.New("vocabulary.com | quizlet.com | memrise.com are only allowed")
 	}
 }
+
+func CheckQuizletUrl(url string){
+
+	if strings.Contains(url,"/folders/") {
+
+	}
+}
+
+
+
 
 func dumpJson(words []model.Word, fileName string) {
 
