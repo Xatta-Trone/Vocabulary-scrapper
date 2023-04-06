@@ -9,11 +9,20 @@ import (
 	"github.com/xatta-trone/words-scrapper/model"
 )
 
-func ScrapVocabulary(url string, options *model.Options) ([]model.Word, string, error) {
+func ScrapVocabulary(url string, options *model.Options) (model.ResponseModel, string, error) {
 
-	words := []model.Word{}
+	// words := []model.Word{}
 	fileName := "default"
 	var err error = nil
+
+	var finalResult model.ResponseModel
+
+	finalResult.FolderURL = url
+
+	// since each vocabulary url has one list
+	var singleResponse model.SingleResponseModel
+	singleResponse.GroupId = 1
+	singleResponse.URL = url
 
 	c := colly.NewCollector(
 		colly.AllowedDomains("www.vocabulary.com"),
@@ -34,25 +43,21 @@ func ScrapVocabulary(url string, options *model.Options) ([]model.Word, string, 
 			wordCheck := s.AttrOr("word", "")
 
 			if wordCheck != "" {
+				singleResponse.Words = append(singleResponse.Words, strings.TrimSpace(strings.ReplaceAll(s.AttrOr("word", ""), "\n", " ")))
+
 				// word := model.Word{
-				// 	ID:         i + 1,
-				// 	Word:       s.AttrOr("word", ""),
-				// 	Definition: s.Find(".definition").Text(),
+				// 	Word: strings.TrimSpace(strings.ReplaceAll(s.AttrOr("word", ""), "\n", " ")),
 				// }
 
-				word := model.Word{
-					Word: strings.TrimSpace(strings.ReplaceAll(s.AttrOr("word", ""), "\n", " ")),
-				}
+				// if !options.NO_DEFINITION {
+				// 	word.Definition = strings.TrimSpace(strings.ReplaceAll(s.Find(".definition").Text(), "\n", " "))
+				// }
 
-				if !options.NO_DEFINITION {
-					word.Definition = strings.TrimSpace(strings.ReplaceAll(s.Find(".definition").Text(), "\n", " "))
-				}
+				// if !options.NO_ID {
+				// 	word.ID = i + 1
+				// }
 
-				if !options.NO_ID {
-					word.ID = i + 1
-				}
-
-				words = append(words, word)
+				// words = append(words, word)
 
 			}
 
@@ -65,6 +70,7 @@ func ScrapVocabulary(url string, options *model.Options) ([]model.Word, string, 
 
 		if len(title) > 0 {
 			fileName = title
+			singleResponse.Title = title
 		}
 	})
 
@@ -83,6 +89,8 @@ func ScrapVocabulary(url string, options *model.Options) ([]model.Word, string, 
 	// Start scraping on https://www.vocabulary.com/lists/7200740
 	c.Visit(url)
 
-	return words, fileName, err
+	finalResult.Sets = append(finalResult.Sets, singleResponse)
+
+	return finalResult, fileName, err
 
 }

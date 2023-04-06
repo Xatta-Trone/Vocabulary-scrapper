@@ -12,12 +12,15 @@ import (
 	"github.com/xatta-trone/words-scrapper/model"
 )
 
-func DecideQuizletScrapper(url string, options *model.Options) ([]model.Word, string, error) {
+func DecideQuizletScrapper(url string, options *model.Options) (model.ResponseModel, string, error) {
 
-	words := []model.Word{}
+	// words := []model.Word{}
 	// indexes := map[string]int{}
 	fileName := "default"
 	var err error = nil
+
+	var finalResult model.ResponseModel
+	finalResult.FolderURL = url
 
 	if strings.Contains(url, "folders") && strings.Contains(url, "sets") {
 		urls, errs := GetUrlMaps(url)
@@ -26,24 +29,32 @@ func DecideQuizletScrapper(url string, options *model.Options) ([]model.Word, st
 			fmt.Println(errs)
 		}
 
-		for key, val := range urls {
-			fmt.Println(key, val)
+		for _, set := range urls {
+			fmt.Println(set.ID, set.Url)
 
-			wds, _, _ := ScrapQuizlet(key, options,val)
+			wds, file, errs := ScrapQuizlet(set.Url, options, set.ID)
 
-			words = append(words, wds...)
+			finalResult.Sets = append(finalResult.Sets, wds)
+			fileName = file
+			err = errs
 
 		}
-		return words, fileName, err
+		return finalResult, fileName, err
 
 	} else {
-		return ScrapQuizlet(url, options, 1)
+		data, fileN, errs := ScrapQuizlet(url, options, 1)
+
+		fileName = fileN
+		err = errs
+		finalResult.Sets = append(finalResult.Sets, data)
+
+		return finalResult, fileName, err
 	}
 
 }
 
-func GetUrlMaps(url string) (map[string]int, string) {
-	indexes := map[string]int{}
+func GetUrlMaps(url string) ([]model.QuizletFolder, string) {
+	indexes := []model.QuizletFolder{}
 	err := ""
 	geziyor.NewGeziyor(&geziyor.Options{
 		StartRequestsFunc: func(g *geziyor.Geziyor) {
@@ -70,8 +81,10 @@ func GetUrlMaps(url string) (map[string]int, string) {
 						// get the url
 						setUrl := s.Find(".UIBaseCardHeader a").AttrOr("href", "")
 						fmt.Println(setUrl)
+						// temp data
+						model := model.QuizletFolder{ID: length, Url: setUrl}
 
-						indexes[setUrl] = length
+						indexes = append(indexes, model)
 						length--
 
 					})
@@ -84,13 +97,16 @@ func GetUrlMaps(url string) (map[string]int, string) {
 	return indexes, err
 }
 
-func ScrapQuizlet(url string, options *model.Options, groupId int) ([]model.Word, string, error) {
+func ScrapQuizlet(url string, options *model.Options, groupId int) (model.SingleResponseModel, string, error) {
 
-	words := []model.Word{}
+	// words := []model.Word{}
 	// indexes := map[string]int{}
 	fileName := "default"
 	var err error = nil
 	// indexBeforeLogin := 0
+	var singleResponse model.SingleResponseModel
+	singleResponse.GroupId = groupId
+	singleResponse.URL = url
 
 	c := colly.NewCollector(
 		colly.AllowedDomains("quizlet.com", "www.quizlet.com"),
@@ -114,7 +130,7 @@ func ScrapQuizlet(url string, options *model.Options, groupId int) ([]model.Word
 	// Find the element with class SetPageTerms-term
 
 	c.OnHTML(".SetPageTerms-termsWrapper", func(e *colly.HTMLElement) {
-		currentId := 0
+		// currentId := 0
 		// find total element in this set
 		// totalSet := strings.TrimSpace(e.DOM.Children().Find(".t27kl0s").Text())
 		// fmt.Println("total words,", totalSet)
@@ -122,54 +138,58 @@ func ScrapQuizlet(url string, options *model.Options, groupId int) ([]model.Word
 		// find the free words
 		e.DOM.Children().Find(".SetPageTerms-term").Each(func(i int, s *goquery.Selection) {
 
-			word := model.Word{
-				Word: s.Children().Find(".SetPageTerm-wordText").Text(),
-				Group: groupId,
-			}
+			singleResponse.Words = append(singleResponse.Words, s.Children().Find(".SetPageTerm-wordText").Text())
 
-			if !options.NO_DEFINITION {
-				word.Definition = s.Children().Find(".SetPageTerm-definitionText").Text()
-			}
+			// word := model.Word{
+			// 	Word: s.Children().Find(".SetPageTerm-wordText").Text(),
+			// 	Group: groupId,
+			// }
 
-			if !options.NO_ID {
-				word.ID = currentId + 1
-			}
+			// if !options.NO_DEFINITION {
+			// 	word.Definition = s.Children().Find(".SetPageTerm-definitionText").Text()
+			// }
 
-			// fmt.Println(word)
+			// if !options.NO_ID {
+			// 	word.ID = currentId + 1
+			// }
 
-			words = append(words, word)
-			currentId++
+			// // fmt.Println(word)
+
+			// words = append(words, word)
+			// currentId++
 
 		})
 
 		// now go for remaining words
-		word2 := model.Word{}
+		// word2 := model.Word{}
 
 		e.DOM.Find("div[style=\"display:none\"]").Children().Each(func(i int, s *goquery.Selection) {
 
 			// set the word // word is in every even number element
 			str := strings.TrimSpace(strings.ReplaceAll(s.Text(), "\n", " "))
 			if i == 0 || i%2 == 0 {
-				word2.Word = str
-				word2.Group = groupId
+				singleResponse.Words = append(singleResponse.Words, str)
 
-				if !options.NO_ID {
-					word2.ID = currentId + 1
-				}
+				// word2.Word = str
+				// word2.Group = groupId
 
-				currentId++
+				// if !options.NO_ID {
+				// 	word2.ID = currentId + 1
+				// }
+
+				// currentId++
 			}
 
 			// set the definition // definition is in every odd number of element
-			if i%2 == 1 {
-				if !options.NO_DEFINITION {
-					word2.Definition = str
-				}
-				// fmt.Println(word2)
-				words = append(words, word2)
-				// set the model empty for the next word
-				word2 = model.Word{}
-			}
+			// if i%2 == 1 {
+			// 	if !options.NO_DEFINITION {
+			// 		word2.Definition = str
+			// 	}
+			// 	// fmt.Println(word2)
+			// 	words = append(words, word2)
+			// 	// set the model empty for the next word
+			// 	word2 = model.Word{}
+			// }
 
 		})
 
@@ -181,6 +201,7 @@ func ScrapQuizlet(url string, options *model.Options, groupId int) ([]model.Word
 		title = strings.ReplaceAll(title, ":", "")
 		if len(title) > 0 {
 			fileName = title
+			singleResponse.Title = title
 		}
 	})
 
@@ -198,6 +219,6 @@ func ScrapQuizlet(url string, options *model.Options, groupId int) ([]model.Word
 	// Start scraping on https://quizlet.com/130371046/gre-flash-cards/
 	c.Visit(url)
 
-	return words, fileName, err
+	return singleResponse, fileName, err
 
 }

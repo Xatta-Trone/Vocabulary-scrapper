@@ -8,10 +8,12 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"net/http"
 	"net/url"
 	"os"
 	"strings"
 
+	"github.com/gin-gonic/gin"
 	"github.com/xatta-trone/words-scrapper/model"
 	"github.com/xatta-trone/words-scrapper/scrapper"
 )
@@ -32,14 +34,7 @@ func main() {
 	onlyCSV := flag.Bool("only-csv", false, "Export to CSV only [default false]")
 	onlyJSON := flag.Bool("only-json", false, "Export to JSON only [default false]")
 	wordsOnly := flag.Bool("words-only", false, "Only Scrap the words; no definition, no id will be included [default false]")
-
 	flag.Parse()
-
-	// check if url is valid
-	if !IsUrl(*url) {
-		fmt.Println("Please enter a valid URL with the flag -url=<your-URL-here>")
-		return
-	}
 
 	// construct the options
 
@@ -58,40 +53,78 @@ func main() {
 		options.NO_ID = true
 	}
 
+	r := gin.Default()
+
+	r.GET("/ping", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{
+			"message": "pong",
+		})
+	})
+
+	r.GET("/scrap", func(ctx *gin.Context) {
+
+		url := ctx.Query("url")
+
+		// check if url is valid
+		if !IsUrl(url) {
+			fmt.Println("Please enter a valid URL with the flag -url=<your-URL-here>")
+			ctx.JSON(http.StatusBadRequest, gin.H{
+				"error": "Please provide a valid url",
+			})
+			return
+		}
+
+		words, _, err := selectScrapper(url, &options)
+
+		fmt.Println(words)
+		fmt.Println(err)
+
+		if err != nil {
+			ctx.JSON(http.StatusBadRequest, gin.H{
+				"error": err,
+			})
+			return
+		}
+
+		ctx.JSON(http.StatusOK, words)
+
+	})
+	r.Run("localhost:8080")
+
 	// file name to be exported
-	defaultFileName := options.OUTPUT
+	// defaultFileName := options.OUTPUT
 
-	words, file, err := selectScrapper(*url, &options)
+	// words, file, err := selectScrapper(*url, &options)
 
-	if options.OUTPUT != "default" {
-		defaultFileName = options.OUTPUT
-	} else {
-		defaultFileName = file
-	}
+	// if options.OUTPUT != "default" {
+	// 	defaultFileName = options.OUTPUT
+	// } else {
+	// 	defaultFileName = file
+	// }
 
-	if err != nil {
-		log.Fatalln("Could not parse url", err)
-	}
+	// if err != nil {
+	// 	log.Fatalln("Could not parse url", err)
+	// }
 
-	if len(words) > 0 {
+	// if len(words) > 0 {
 
-		if options.ONLY_CSV {
-			dumpCSV(words, defaultFileName)
-			return
-		}
+	// 	if options.ONLY_CSV {
+	// 		dumpCSV(words, defaultFileName)
+	// 		return
+	// 	}
 
-		if options.ONLY_JSON {
-			dumpJson(words, defaultFileName)
-			return
-		}
-		dumpCSV(words, defaultFileName)
-		dumpJson(words, defaultFileName)
+	// 	if options.ONLY_JSON {
+	// 		dumpJson(words, defaultFileName)
+	// 		return
+	// 	}
+	// 	dumpCSV(words, defaultFileName)
+	// 	dumpJson(words, defaultFileName)
 
-	}
+	// }
 
 }
 
-func selectScrapper(url string, options *model.Options) ([]model.Word, string, error) {
+func selectScrapper(url string, options *model.Options) (model.ResponseModel, string, error) {
 	if strings.Contains(url, "vocabulary.com") {
 
 		return scrapper.ScrapVocabulary(url, options)
@@ -109,19 +142,9 @@ func selectScrapper(url string, options *model.Options) ([]model.Word, string, e
 
 		log.Fatal("The given url do not match vocabulary.com | quizlet.com | memrise.com")
 
-		return []model.Word{}, "default", errors.New("vocabulary.com | quizlet.com | memrise.com are only allowed")
+		return model.ResponseModel{}, "default", errors.New("vocabulary.com | quizlet.com | memrise.com are only allowed")
 	}
 }
-
-func CheckQuizletUrl(url string){
-
-	if strings.Contains(url,"/folders/") {
-
-	}
-}
-
-
-
 
 func dumpJson(words []model.Word, fileName string) {
 

@@ -6,7 +6,7 @@ type Word struct {
 	ID         int    `json:"id,omitempty"`
 	Word       string `json:"word"`
 	Definition string `json:"definition,omitempty"`
-	Group    int    `json:"group,omitempty"`
+	Group      int    `json:"group,omitempty"`
 }
 
 type Options struct {
@@ -17,6 +17,23 @@ type Options struct {
 	ONLY_WORD     bool
 	ONLY_CSV      bool
 	ONLY_JSON     bool
+}
+
+type ResponseModel struct {
+	FolderURL string                `json:"folder_url"`
+	Sets      []SingleResponseModel `json:"sets"`
+}
+
+type SingleResponseModel struct {
+	Title   string   `json:"title"`
+	GroupId int      `json:"group_id"`
+	URL     string   `json:"url"`
+	Words   []string `json:"words"`
+}
+
+type QuizletFolder struct {
+	ID  int    `json:"id"`
+	Url string `json:"url"`
 }
 
 func (w Word) BuildCSV() []string {

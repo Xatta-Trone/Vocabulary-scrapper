@@ -10,12 +10,15 @@ import (
 	"github.com/xatta-trone/words-scrapper/model"
 )
 
-func ScrapMemrise(url string, options *model.Options) ([]model.Word, string, error) {
+func ScrapMemrise(url string, options *model.Options) (model.ResponseModel, string, error) {
 
-	words := []model.Word{}
+	// words := []model.Word{}
 	fileName := "default"
 	var err error = nil
-	var wordId int = 0
+	// var wordId int = 0
+	var finalResult model.ResponseModel
+
+	finalResult.FolderURL = url
 
 	c := colly.NewCollector(
 		colly.AllowedDomains("app.memrise.com", "app.memrise.com"),
@@ -67,40 +70,54 @@ func ScrapMemrise(url string, options *model.Options) ([]model.Word, string, err
 
 	// scrap words
 
-	detailCollector.OnHTML(".things", func(h *colly.HTMLElement) {
+	detailCollector.OnHTML("body", func(h *colly.HTMLElement) {
 		// extract the group ID
 		groups := strings.Split(h.Request.URL.Path, "/")
-		group, err  := strconv.Atoi(groups[len(groups)-2])
+		group, err := strconv.Atoi(groups[len(groups)-2])
 
 		if err != nil {
 			group = 1
 		}
 
-		fmt.Printf("Memrise group %d\n",group)
+		var singleSet model.SingleResponseModel
+
+		singleSet.URL = h.Request.URL.Path
+		singleSet.GroupId = group
+
+		// get the title
+		title := h.DOM.Find(".course-name").Text()
+		singleSet.Title = title
+
+		fmt.Println(title)
+
+		fmt.Printf("Memrise group %d\n", group)
 
 		h.DOM.Find(".thing").Each(func(i int, s *goquery.Selection) {
-			word := model.Word{
-				Word: strings.TrimSpace(strings.ReplaceAll(s.Find(".col_a").Text(), "\n", " ")),
-				Group: group,
-			}
+			// word := model.Word{
+			// 	Word: strings.TrimSpace(strings.ReplaceAll(s.Find(".col_a").Text(), "\n", " ")),
+			// 	Group: group,
+			// }
+			singleSet.Words = append(singleSet.Words, strings.TrimSpace(strings.ReplaceAll(s.Find(".col_a").Text(), "\n", " ")))
 
-			if !options.NO_DEFINITION {
-				word.Definition = strings.TrimSpace(strings.ReplaceAll(s.Find(".col_b").Text(), "\n", " "))
-			}
+			// if !options.NO_DEFINITION {
+			// 	word.Definition = strings.TrimSpace(strings.ReplaceAll(s.Find(".col_b").Text(), "\n", " "))
+			// }
 
-			if !options.NO_ID {
-				word.ID = wordId + 1
-			}
+			// if !options.NO_ID {
+			// 	word.ID = i + 1
+			// }
 
-			words = append(words, word)
-			wordId++
+			// words = append(words, word)
+			// wordId++
 		})
+
+		finalResult.Sets = append(finalResult.Sets, singleSet)
 
 	})
 
 	// Start scraping on https://app.memrise.com/course/5672405/barrons-gre-333-high-frequency-word/
 	c.Visit(url)
 
-	return words, fileName, err
+	return finalResult, fileName, err
 
 }
