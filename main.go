@@ -89,7 +89,7 @@ func main() {
 		ctx.JSON(http.StatusOK, words)
 
 	})
-	r.Run("localhost:8080")
+	r.Run("localhost:8081")
 
 	// file name to be exported
 	// defaultFileName := options.OUTPUT
