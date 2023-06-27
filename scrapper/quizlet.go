@@ -120,6 +120,19 @@ func ScrapQuizlet(url string, options *model.Options, groupId int) (model.Single
 			}
 
 			root := r.HTMLDoc.Find(".SetPage-setContentWrapper")
+			// for {
+			// 	// chromedp.WaitVisible("button[aria-label='See more']")
+			// 	s := root.Find("button").Last()
+			// 	fmt.Println(s.Text())
+			// 	if s.Text() == "See More" {
+			// 		chromedp.Click(`*/deep/[value="See More"]`, chromedp.BySearch)
+			// 		time.Sleep(time.Duration(time.Second * 5))
+			// 		continue
+			// 	} else {
+			// 		break
+			// 	}
+
+			// }
 
 			if root.Length() == 1 {
 				// it will go through each group
@@ -127,7 +140,7 @@ func ScrapQuizlet(url string, options *model.Options, groupId int) (model.Single
 				sets := rootSet.Find(".SetPageTerms-term")
 				length := sets.Length()
 
-				// fmt.Println(length)
+				fmt.Println(length)
 
 				if length > 0 {
 					sets.Each(func(i int, s *goquery.Selection) {
@@ -137,7 +150,11 @@ func ScrapQuizlet(url string, options *model.Options, groupId int) (model.Single
 				}
 
 				// hidden sets
-				rootSet.Find("div[style=\"display:none\"]").Children().Each(func(i int, s *goquery.Selection) {
+				hidden := root.Find("div[style=\"display:none\"]").Children()
+
+				fmt.Println("hidden set", hidden.Length())
+
+				hidden.Each(func(i int, s *goquery.Selection) {
 					// set the word // word is in every even number element
 					str := strings.TrimSpace(strings.ReplaceAll(s.Text(), "\n", " "))
 					if i == 0 || i%2 == 0 {
@@ -158,7 +175,7 @@ func ScrapQuizlet(url string, options *model.Options, groupId int) (model.Single
 				// find the title
 				titleText := root.Find("div.SetPage-titleWrapper").Text()
 				title := strings.TrimSpace(titleText)
-				title = strings.ReplaceAll(title, " ", "-")
+				// title = strings.ReplaceAll(title, " ", "-")
 				title = strings.ReplaceAll(title, ":", "")
 				if len(title) > 0 {
 					fileName = title
@@ -167,11 +184,8 @@ func ScrapQuizlet(url string, options *model.Options, groupId int) (model.Single
 
 			}
 
-
 		},
 	}).Start()
-
-	
 
 	return singleResponse, fileName, err
 
