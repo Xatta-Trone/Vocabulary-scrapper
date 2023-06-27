@@ -22,11 +22,13 @@ func DecideQuizletScrapper(url string, options *model.Options) (model.ResponseMo
 	finalResult.FolderURL = url
 
 	if strings.Contains(url, "folders") && strings.Contains(url, "sets") {
-		urls, errs := GetUrlMaps(url)
+		urls, folderName, errs := GetUrlMaps(url)
 
 		if errs != "" {
 			fmt.Println(errs)
 		}
+
+		fmt.Println(folderName)
 
 		for _, set := range urls {
 			fmt.Println(set.ID, set.Url)
@@ -52,9 +54,10 @@ func DecideQuizletScrapper(url string, options *model.Options) (model.ResponseMo
 
 }
 
-func GetUrlMaps(url string) ([]model.QuizletFolder, string) {
+func GetUrlMaps(url string) ([]model.QuizletFolder, string, string) {
 	indexes := []model.QuizletFolder{}
 	err := ""
+	folderName := ""
 	geziyor.NewGeziyor(&geziyor.Options{
 		StartRequestsFunc: func(g *geziyor.Geziyor) {
 			g.GetRendered(url, g.Opt.ParseFunc)
@@ -64,6 +67,15 @@ func GetUrlMaps(url string) ([]model.QuizletFolder, string) {
 
 			if r.StatusCode != http.StatusOK {
 				err = r.Status
+			}
+
+			// find the title
+			titleText := r.HTMLDoc.Find("div.DashboardHeaderTitle-main").Text()
+			title := strings.TrimSpace(titleText)
+			// title = strings.ReplaceAll(title, " ", "-")
+			title = strings.ReplaceAll(title, ":", "")
+			if len(title) > 0 {
+				folderName = title
 			}
 
 			root := r.HTMLDoc.Find(".FolderPageSetsList-setsFeed")
@@ -93,7 +105,7 @@ func GetUrlMaps(url string) ([]model.QuizletFolder, string) {
 		},
 	}).Start()
 
-	return indexes, err
+	return indexes, folderName, err
 }
 
 func ScrapQuizlet(url string, options *model.Options, groupId int) (model.SingleResponseModel, string, error) {
@@ -173,7 +185,7 @@ func ScrapQuizlet(url string, options *model.Options, groupId int) (model.Single
 				})
 
 				// find the title
-				titleText := root.Find("div.SetPage-titleWrapper").Text()
+				titleText := root.Find("div.SetPage-breadcrumbTitleWrapper").Text()
 				title := strings.TrimSpace(titleText)
 				// title = strings.ReplaceAll(title, " ", "-")
 				title = strings.ReplaceAll(title, ":", "")
